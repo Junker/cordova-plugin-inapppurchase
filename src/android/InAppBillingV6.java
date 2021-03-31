@@ -380,7 +380,7 @@ public class InAppBillingV6 extends CordovaPlugin {
       NumberFormat format = NumberFormat.getCurrencyInstance();
       format.setCurrency(Currency.getInstance(Locale.getDefault()));
       String result;
-      if (price.contains(".") || price.contains(",")) {
+      if (price.contains(".")) {
         result = format.format(Double.parseDouble(price));
       } else {
         result = format.format(Long.parseLong(price));
