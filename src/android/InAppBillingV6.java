@@ -376,15 +376,10 @@ public class InAppBillingV6 extends CordovaPlugin {
 
   protected boolean getFormattedPrice(final JSONArray args, final CallbackContext callbackContext) {
     try {
-      String price = args.getString(0);
+      Object priceObject = args.get(0);
       NumberFormat format = NumberFormat.getCurrencyInstance();
       format.setCurrency(Currency.getInstance(Locale.getDefault()));
-      String result;
-      if (price.contains(".")) {
-        result = format.format(Double.parseDouble(price));
-      } else {
-        result = format.format(Long.parseLong(price));
-      }
+      String result = format.format(priceObject);
       JSONObject pluginResponse = new JSONObject();
       pluginResponse.put("formattedPrice", result);
       callbackContext.success(pluginResponse);
