@@ -66,22 +66,45 @@ public class InAppBillingV6 extends CordovaPlugin {
   private JSONObject getManifestContents() {
     if (manifestObject != null) return manifestObject;
 
-    Context context = this.cordova.getActivity();
     InputStream is;
     try {
-      is = context.getAssets().open("www/manifest.json");
-      Scanner s = new Scanner(is).useDelimiter("\\A");
-      String manifestString = s.hasNext() ? s.next() : "";
-      Log.d(TAG, "manifest:" + manifestString);
-      manifestObject = new JSONObject(manifestString);
-    } catch (IOException e) {
-      Log.d(TAG, "Unable to read manifest file:" + e.toString());
-      manifestObject = null;
+      is = getManifestFileInputStream("wwww");
+      if (is == null) {
+        is = getManifestFileInputStream("public");
+      }
+      if (is != null) {
+        Scanner s = new Scanner(is).useDelimiter("\\A");
+        String manifestString = s.hasNext() ? s.next() : "";
+        Log.d(TAG, "manifest:" + manifestString);
+        manifestObject = new JSONObject(manifestString);
+      } else {
+        manifestObject = null;
+      }
     } catch (JSONException e) {
       Log.d(TAG, "Unable to parse manifest file:" + e.toString());
       manifestObject = null;
     }
     return manifestObject;
+  }
+
+  /**
+   * Load manifest file from assets by given path.
+   *
+   * In Cordova manifest file should be placed on path 'www/manifest.json'.
+   * In Capacitor the path should be 'public/manifest.json'
+   *
+   * @param path should contain path of manifest.json file (without '/manifest.json').
+   * @return InputStream if manifest file is loaded, null otherwise.
+   */
+  private InputStream getManifestFileInputStream(String path) {
+    InputStream inputStream = null;
+    Context context = this.cordova.getActivity();
+    try {
+      inputStream = context.getAssets().open(path + "/manifest.json");
+    } catch (IOException e) {
+      Log.d(TAG, "Can not load manifest file on path: " + path + "/manifest.json");
+    }
+    return inputStream;
   }
 
   protected String getBase64EncodedPublicKey() {
@@ -178,7 +201,7 @@ public class InAppBillingV6 extends CordovaPlugin {
   }
 
   protected boolean init(final JSONArray args, final CallbackContext callbackContext) {
-    if (billingInitialized == true) {
+    if (billingInitialized) {
       Log.d(TAG, "Billing already initialized");
       callbackContext.success();
     } else if (iabHelper == null) {
@@ -215,10 +238,17 @@ public class InAppBillingV6 extends CordovaPlugin {
     final Bundle extraParams;
     try {
       JSONObject arg1 = args.optJSONObject(1);
-      String accountId = arg1.optString("accountId");
-      Boolean replaceSkusProration = arg1.optBoolean("replaceSkusProration", true);
-      JSONArray skusToReplaceJson = arg1.optJSONArray("skusToReplace");
-
+      String accountId = "";
+      boolean replaceSkusProration = true;
+      JSONArray skusToReplaceJson = new JSONArray();
+      if (arg1 != null) {
+        accountId = arg1.optString("accountId");
+        replaceSkusProration = arg1.optBoolean("replaceSkusProration", true);
+        skusToReplaceJson = arg1.optJSONArray("skusToReplace");
+        if (skusToReplaceJson == null) {
+          skusToReplaceJson = new JSONArray();
+        }
+      }
       List<String> ownedSkus;
       try {
         Inventory inventory = iabHelper.queryInventory(true, convertJsonArrayToList(skusToReplaceJson));
@@ -229,7 +259,7 @@ public class InAppBillingV6 extends CordovaPlugin {
       }
 
       // skusToReplace intent parameter required only passing a currently subscribed plan.
-      ArrayList<String> skusToReplace = new ArrayList<String>();
+      ArrayList<String> skusToReplace = new ArrayList<>();
       for (int i = 0; i < skusToReplaceJson.length(); i++) {
         String skuToReplace = skusToReplaceJson.getString(i);
         if (!sku.equals(skuToReplace) && ownedSkus.contains(skuToReplace)) {
