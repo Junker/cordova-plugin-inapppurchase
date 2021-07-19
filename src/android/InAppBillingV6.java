@@ -68,7 +68,7 @@ public class InAppBillingV6 extends CordovaPlugin {
 
     InputStream is;
     try {
-      is = getManifestFileInputStream("wwww");
+      is = getManifestFileInputStream("www");
       if (is == null) {
         is = getManifestFileInputStream("public");
       }
